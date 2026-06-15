@@ -5,6 +5,7 @@ use std::str::FromStr;
 use std::{ptr, slice};
 
 pub mod tools;
+pub use binaryen_sys as ffi;
 
 /// Codegen configuration.
 #[derive(Default)]

@@ -133,14 +133,24 @@ fn main() {
 
     gen_passes();
 
-    let dst = cmake::Config::new("binaryen")
-        .define("BUILD_STATIC_LIB", "ON")
-        .define("ENABLE_WERROR", "OFF")
-        .define("BUILD_TESTS", "OFF")
-        .define("BUILD_TOOLS", "OFF")
-        .build();
+    // On macOS 26+ (Tahoe), the deployment target version is passed through to
+    // C/CXX flags as -mmacosx-version-min=26.x, but the libc++ availability
+    // macros misidentify std::filesystem symbols as unavailable at that version.
+    // Pin the deployment target to 11.0 to work around this SDK issue.
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
+        env::set_var("MACOSX_DEPLOYMENT_TARGET", "11.0");
+    }
 
-    println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
+    // let dst = cmake::Config::new("binaryen")
+    //     .define("BUILD_SHARED_LIBS", "OFF")
+    //     .define("ENABLE_WERROR", "OFF")
+    //     .define("BUILD_TESTS", "OFF")
+    //     .define("BUILD_TOOLS", "OFF")
+    //     .build();
+
+    // println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
+
+    println!("cargo:rustc-link-search=native=/Users/simon/Developer/binaryen-rs/binaryen-sys/binaryen/lib");
     println!("cargo:rustc-link-lib=static=binaryen");
 
     // We need to link against C++ std lib
@@ -150,12 +160,12 @@ fn main() {
 
     let mut cfg = cc::Build::new();
     if cfg.get_compiler().is_like_msvc() {
-        cfg.flag("/std:c++17");
+        cfg.flag("/std:c++20");
         // fixes: C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc
         // https://github.com/pepyakin/binaryen-rs/runs/8112353194?check_suite_focus=true#step:4:2391
         cfg.flag("/EHsc");
     } else {
-        cfg.flag("-std=c++17");
+        cfg.flag("-std=c++20");
     }
     cfg.file("Shim.cpp")
         // See binaryen-sys/binaryen/src/tools/CMakeLists.txt
@@ -168,7 +178,7 @@ fn main() {
         .cpp_link_stdlib(None)
         .warnings(false)
         .cpp(true)
-        .flag("-std=c++17")
+        .flag("-std=c++20")
         .compile("binaryen_shim");
 }
 
